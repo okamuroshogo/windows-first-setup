@@ -1,0 +1,31 @@
+# Local/sensitive configuration
+config/local.psd1
+.env
+.env.*
+
+# Logs
+*.log
+
+# Backups
+*.bak
+*.tmp
+scripts/network-backup-*.json
+
+# Node.js
+node_modules/
+
+# Windows-specific generated files
+*.exe
+*.msi
+Thumbs.db
+Desktop.ini
+
+# Editor / IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS-generated files
+.DS_Store
