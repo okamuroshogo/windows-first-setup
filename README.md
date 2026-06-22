@@ -28,9 +28,9 @@ irm "https://raw.githubusercontent.com/okamuroshogo/windows-first-setup/main/scr
 
 > **セキュリティ警告**: `irm | iex` はダウンロードしたスクリプトを直接実行します。中間者攻撃やURL内容の改ざんのリスクがあります。初回は方法Aで内容を確認してから実行することを強く推奨します。詳細は [docs/security.md](docs/security.md) を参照してください。
 
-スクリプト実行中に SSH 公開鍵の貼り付けを求められます。Mac/Linux 側で `cat ~/.ssh/id_ed25519.pub` を実行し、出力をコピーして貼り付けてください。
+スクリプトが GitHub (`github.com/okamuroshogo.keys`) から SSH 公開鍵を自動取得して `administrators_authorized_keys` に登録します。GitHub への接続に失敗した場合のみ、手動で公開鍵を貼り付けるプロンプトが表示されます。
 
-> **Microsoft アカウントの場合**: パスワードではなく PIN でサインインするため、SSH のパスワード認証が使えません。Bootstrap スクリプトが公開鍵の登録まで行うので、画面の指示に従って公開鍵を貼り付けてください。
+> **Microsoft アカウントの場合**: パスワードではなく PIN でサインインするため、SSH のパスワード認証が使えません。Bootstrap スクリプトが公開鍵の登録まで自動で行います。
 
 ### 2. Mac から SSH 接続
 

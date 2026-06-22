@@ -127,35 +127,37 @@ if (Test-Path $adminAuthKeysPath) {
 }
 
 if (-not $existingKeys) {
-    Write-Host ""
-    Write-Host "  Microsoft アカウントでは PIN しか設定されていないため、" -ForegroundColor Yellow
-    Write-Host "  パスワード認証での SSH 接続ができません。" -ForegroundColor Yellow
-    Write-Host "  公開鍵を登録して鍵認証を有効にします。" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  接続元の Mac/Linux で以下を実行して公開鍵をコピーしてください:" -ForegroundColor White
-    Write-Host "    cat ~/.ssh/id_ed25519.pub" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "  コピーした公開鍵を貼り付けて Enter を押してください。" -ForegroundColor White
-    Write-Host "  (スキップする場合はそのまま Enter を押してください)" -ForegroundColor DarkGray
-    Write-Host ""
+    # GitHub から公開鍵を自動取得
+    $githubUser = 'okamuroshogo'
+    $githubKeysUrl = "https://github.com/${githubUser}.keys"
+    $keysToRegister = $null
 
-    $pubKey = Read-Host "  公開鍵"
+    Write-Host "  GitHub (${githubKeysUrl}) から公開鍵を取得中..." -ForegroundColor White
+    try {
+        $response = Invoke-WebRequest -Uri $githubKeysUrl -UseBasicParsing -TimeoutSec 10
+        $keysToRegister = ($response.Content.Trim() -split "`n") | Where-Object { $_ -match '^ssh-' }
+    } catch {
+        Write-Warn "GitHub からの取得に失敗しました: $_"
+    }
 
-    if ($pubKey -and $pubKey -match '^ssh-(ed25519|rsa|ecdsa)') {
+    if ($keysToRegister -and $keysToRegister.Count -gt 0) {
+        Write-OK "GitHub から $($keysToRegister.Count) 個の公開鍵を取得しました"
+        foreach ($key in $keysToRegister) {
+            $parts = $key -split '\s+'
+            $keyType = $parts[0]
+            $keyShort = $parts[1].Substring(0, [Math]::Min(20, $parts[1].Length)) + '...'
+            Write-Host "    $keyType $keyShort" -ForegroundColor DarkGray
+        }
+
         # ssh ディレクトリの確認
         $sshDir = Join-Path $env:ProgramData 'ssh'
         if (-not (Test-Path $sshDir)) {
             New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
         }
 
-        # 公開鍵を追加 (BOM なし UTF-8 で書き込み)
+        # 公開鍵を書き込み (BOM なし UTF-8)
         $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-        if (Test-Path $adminAuthKeysPath) {
-            $existing = [System.IO.File]::ReadAllText($adminAuthKeysPath, $utf8NoBom).TrimEnd()
-            $newContent = if ($existing) { "$existing`n$pubKey`n" } else { "$pubKey`n" }
-        } else {
-            $newContent = "$pubKey`n"
-        }
+        $newContent = ($keysToRegister -join "`n") + "`n"
         [System.IO.File]::WriteAllText($adminAuthKeysPath, $newContent, $utf8NoBom)
 
         # ACL を設定 (SYSTEM と Administrators のみ)
@@ -163,12 +165,37 @@ if (-not $existingKeys) {
 
         Write-OK "公開鍵を administrators_authorized_keys に登録しました"
         Write-OK "ACL を設定しました (Administrators:F, SYSTEM:F)"
-    } elseif ($pubKey) {
-        Write-Fail "公開鍵の形式が正しくありません。ssh-ed25519, ssh-rsa, ssh-ecdsa で始まる文字列を貼り付けてください。"
-        Write-Host "  後から手動で登録する場合は、README の手順を参照してください。" -ForegroundColor DarkGray
     } else {
-        Write-Warn "公開鍵の登録をスキップしました"
-        Write-Host "  後から登録する場合は、README の手順を参照してください。" -ForegroundColor DarkGray
+        Write-Fail "GitHub から公開鍵を取得できませんでした。"
+        Write-Host "  https://github.com/settings/keys に SSH 鍵が登録されているか確認してください。" -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "  手動で登録する場合、接続元で以下を実行して公開鍵をコピーしてください:" -ForegroundColor White
+        Write-Host "    cat ~/.ssh/id_ed25519.pub" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "  コピーした公開鍵を貼り付けて Enter を押してください。" -ForegroundColor White
+        Write-Host "  (スキップする場合はそのまま Enter を押してください)" -ForegroundColor DarkGray
+        Write-Host ""
+
+        $pubKey = Read-Host "  公開鍵"
+
+        if ($pubKey -and $pubKey -match '^ssh-(ed25519|rsa|ecdsa)') {
+            $sshDir = Join-Path $env:ProgramData 'ssh'
+            if (-not (Test-Path $sshDir)) {
+                New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
+            }
+
+            $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText($adminAuthKeysPath, "$pubKey`n", $utf8NoBom)
+
+            icacls $adminAuthKeysPath /inheritance:r /grant 'Administrators:F' /grant 'SYSTEM:F' | Out-Null
+
+            Write-OK "公開鍵を administrators_authorized_keys に登録しました"
+            Write-OK "ACL を設定しました (Administrators:F, SYSTEM:F)"
+        } elseif ($pubKey) {
+            Write-Fail "公開鍵の形式が正しくありません。ssh-ed25519, ssh-rsa, ssh-ecdsa で始まる文字列を貼り付けてください。"
+        } else {
+            Write-Warn "公開鍵の登録をスキップしました"
+        }
     }
 }
 
