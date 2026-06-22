@@ -88,9 +88,88 @@ if ($firewallRule) {
         -Protocol TCP `
         -Action Allow `
         -LocalPort 22 `
-        -Profile @('Domain', 'Private') | Out-Null
-    Write-OK "Firewall ルール 'OpenSSH-Server-In-TCP' を作成しました (Domain/Private プロファイルのみ)"
-    Write-Warn "Public プロファイルでは TCP 22 を許可していません。外部からの接続には Tailscale の利用を推奨します。"
+        -Profile Any | Out-Null
+    Write-OK "Firewall ルール 'OpenSSH-Server-In-TCP' を作成しました"
+}
+
+# ネットワークプロファイルが Public の場合でも接続できるよう、既存ルールを全プロファイルに更新
+$existingRule = Get-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -ErrorAction SilentlyContinue
+if ($existingRule -and $existingRule.Profile -ne 'Any') {
+    Set-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -Profile Any
+    Write-OK "Firewall ルールを全プロファイル (Any) に更新しました"
+}
+
+# --- SSH 公開鍵の登録 ---
+# Microsoft アカウントではパスワード認証が使えないため、
+# この段階で公開鍵を登録しないと SSH 接続できない。
+Write-Step "SSH 公開鍵の登録"
+
+$adminAuthKeysPath = 'C:\ProgramData\ssh\administrators_authorized_keys'
+
+# 既に公開鍵が登録済みかチェック
+$existingKeys = $false
+if (Test-Path $adminAuthKeysPath) {
+    $content = Get-Content $adminAuthKeysPath -ErrorAction SilentlyContinue
+    if ($content -and ($content | Where-Object { $_ -match '^ssh-' })) {
+        $existingKeys = $true
+        Write-OK "administrators_authorized_keys に既に公開鍵が登録されています"
+        Write-Host "  既存の鍵:" -ForegroundColor DarkGray
+        foreach ($line in $content) {
+            if ($line -match '^ssh-') {
+                # 鍵の末尾コメント部分だけ表示
+                $parts = $line -split '\s+'
+                $keyType = $parts[0]
+                $comment = if ($parts.Count -ge 3) { $parts[2..($parts.Count-1)] -join ' ' } else { '(no comment)' }
+                Write-Host "    $keyType ... $comment" -ForegroundColor DarkGray
+            }
+        }
+    }
+}
+
+if (-not $existingKeys) {
+    Write-Host ""
+    Write-Host "  Microsoft アカウントでは PIN しか設定されていないため、" -ForegroundColor Yellow
+    Write-Host "  パスワード認証での SSH 接続ができません。" -ForegroundColor Yellow
+    Write-Host "  公開鍵を登録して鍵認証を有効にします。" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  接続元の Mac/Linux で以下を実行して公開鍵をコピーしてください:" -ForegroundColor White
+    Write-Host "    cat ~/.ssh/id_ed25519.pub" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  コピーした公開鍵を貼り付けて Enter を押してください。" -ForegroundColor White
+    Write-Host "  (スキップする場合はそのまま Enter を押してください)" -ForegroundColor DarkGray
+    Write-Host ""
+
+    $pubKey = Read-Host "  公開鍵"
+
+    if ($pubKey -and $pubKey -match '^ssh-(ed25519|rsa|ecdsa)') {
+        # ssh ディレクトリの確認
+        $sshDir = Join-Path $env:ProgramData 'ssh'
+        if (-not (Test-Path $sshDir)) {
+            New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
+        }
+
+        # 公開鍵を追加 (BOM なし UTF-8 で書き込み)
+        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        if (Test-Path $adminAuthKeysPath) {
+            $existing = [System.IO.File]::ReadAllText($adminAuthKeysPath, $utf8NoBom).TrimEnd()
+            $newContent = if ($existing) { "$existing`n$pubKey`n" } else { "$pubKey`n" }
+        } else {
+            $newContent = "$pubKey`n"
+        }
+        [System.IO.File]::WriteAllText($adminAuthKeysPath, $newContent, $utf8NoBom)
+
+        # ACL を設定 (SYSTEM と Administrators のみ)
+        icacls $adminAuthKeysPath /inheritance:r /grant 'Administrators:F' /grant 'SYSTEM:F' | Out-Null
+
+        Write-OK "公開鍵を administrators_authorized_keys に登録しました"
+        Write-OK "ACL を設定しました (Administrators:F, SYSTEM:F)"
+    } elseif ($pubKey) {
+        Write-Fail "公開鍵の形式が正しくありません。ssh-ed25519, ssh-rsa, ssh-ecdsa で始まる文字列を貼り付けてください。"
+        Write-Host "  後から手動で登録する場合は、README の手順を参照してください。" -ForegroundColor DarkGray
+    } else {
+        Write-Warn "公開鍵の登録をスキップしました"
+        Write-Host "  後から登録する場合は、README の手順を参照してください。" -ForegroundColor DarkGray
+    }
 }
 
 # --- 接続情報の表示 ---
@@ -115,58 +194,10 @@ if ($ipAddresses) {
     Write-Warn "IPv4 アドレスが見つかりません。ネットワーク接続を確認してください。"
 }
 
-# --- SSH公開鍵の登録方法 ---
-Write-Step "SSH 公開鍵の登録方法"
 Write-Host ""
-Write-Host "  別のPCから以下のコマンドで公開鍵を登録できます:" -ForegroundColor White
-Write-Host ""
-
-# 管理者ユーザーの場合
-$isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-$adminGroupMembers = @()
-try {
-    $adminGroupMembers = Get-LocalGroupMember -Group 'Administrators' -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -like "*\$currentUser" }
-} catch {
-    # Get-LocalGroupMember が失敗する場合がある
-}
-
-$authKeysPath = Join-Path $env:USERPROFILE '.ssh\authorized_keys'
-$adminAuthKeysPath = 'C:\ProgramData\ssh\administrators_authorized_keys'
-
-if ($adminGroupMembers -or $isAdmin) {
-    Write-Host "  ※ $currentUser は Administrators グループのメンバーです。" -ForegroundColor Yellow
-    Write-Host "  ※ 管理者ユーザーの場合、以下のファイルに公開鍵を登録する必要があります:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "    $adminAuthKeysPath" -ForegroundColor White
-    Write-Host ""
-    Write-Host "  【Mac/Linux から実行】" -ForegroundColor White
-    Write-Host "  # 公開鍵をWindowsへコピー" -ForegroundColor DarkGray
-    foreach ($ip in $ipAddresses) {
-        Write-Host "  scp ~/.ssh/id_ed25519.pub ${currentUser}@${ip}:C:\ProgramData\ssh\" -ForegroundColor White
-    }
-    Write-Host ""
-    Write-Host "  【Windows側で管理者PowerShellから実行】" -ForegroundColor White
-    Write-Host "  # 公開鍵ファイルを administrators_authorized_keys に追加" -ForegroundColor DarkGray
-    Write-Host "  Get-Content C:\ProgramData\ssh\id_ed25519.pub | Add-Content $adminAuthKeysPath" -ForegroundColor White
-    Write-Host "  Remove-Item C:\ProgramData\ssh\id_ed25519.pub" -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "  # ACLを正しく設定 (重要)" -ForegroundColor DarkGray
-    Write-Host '  icacls $env:ProgramData\ssh\administrators_authorized_keys /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F"' -ForegroundColor White
-    Write-Host ""
-    Write-Host "  【または、Mac/Linux から ssh-copy-id 風に実行 (標準ユーザー用)】" -ForegroundColor White
-    Write-Host "  ※ 管理者ユーザーでは ssh-copy-id は administrators_authorized_keys に書き込まないため、上記の手動方法を推奨します。" -ForegroundColor Yellow
-} else {
-    Write-Host "  【Mac/Linux から実行】" -ForegroundColor White
-    foreach ($ip in $ipAddresses) {
-        Write-Host "  ssh-copy-id -i ~/.ssh/id_ed25519.pub ${currentUser}@${ip}" -ForegroundColor White
-    }
-}
-
-Write-Host ""
-Write-Host "  【接続テスト】" -ForegroundColor White
+Write-Host "  【接続テスト (Mac/Linux から実行)】" -ForegroundColor White
 foreach ($ip in $ipAddresses) {
-    Write-Host "  ssh ${currentUser}@${ip}" -ForegroundColor White
+    Write-Host "  ssh ${currentUser}@${ip}" -ForegroundColor Cyan
 }
 
 Write-Host ""

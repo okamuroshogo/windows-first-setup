@@ -209,6 +209,36 @@ SSH サーバーが起動せず、リモートから接続できない。
 
 ---
 
+## Microsoft アカウントで SSH パスワード認証ができない
+
+### 症状
+
+```
+user@host: Permission denied (password).
+```
+
+Microsoft アカウントでサインインしている Windows では、ローカルパスワードではなく PIN / Windows Hello で認証するため、SSH のパスワード認証が機能しません。
+
+### 対処
+
+`00-bootstrap-openssh.ps1` を実行すると、公開鍵の貼り付けプロンプトが表示されます。Mac/Linux 側で `cat ~/.ssh/id_ed25519.pub` を実行し、出力をコピーして貼り付けてください。
+
+スクリプト実行時にスキップした場合は、Windows の管理者 PowerShell で手動で登録できます:
+
+```powershell
+# 公開鍵を貼り付けて登録
+$pubKey = Read-Host "公開鍵を貼り付け"
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText(
+    "C:\ProgramData\ssh\administrators_authorized_keys",
+    "$pubKey`n",
+    $utf8NoBom
+)
+icacls $env:ProgramData\ssh\administrators_authorized_keys /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F"
+```
+
+---
+
 ## `Permission denied (publickey)`
 
 ### 症状

@@ -28,41 +28,18 @@ irm "https://raw.githubusercontent.com/okamuroshogo/windows-first-setup/main/scr
 
 > **セキュリティ警告**: `irm | iex` はダウンロードしたスクリプトを直接実行します。中間者攻撃やURL内容の改ざんのリスクがあります。初回は方法Aで内容を確認してから実行することを強く推奨します。詳細は [docs/security.md](docs/security.md) を参照してください。
 
-スクリプト実行後、ユーザー名と IP アドレスが表示されます。
+スクリプト実行中に SSH 公開鍵の貼り付けを求められます。Mac/Linux 側で `cat ~/.ssh/id_ed25519.pub` を実行し、出力をコピーして貼り付けてください。
 
-### 2. SSH 公開鍵を登録
+> **Microsoft アカウントの場合**: パスワードではなく PIN でサインインするため、SSH のパスワード認証が使えません。Bootstrap スクリプトが公開鍵の登録まで行うので、画面の指示に従って公開鍵を貼り付けてください。
 
-Mac/Linux のクライアント側で以下を実行します。
-
-```bash
-# 例: ユーザー名が shogo、WindowsのIPが 192.168.1.100 の場合
-# ※ ユーザー名とIPは自分の環境に合わせて変更してください
-
-# 管理者ユーザーの場合、administrators_authorized_keys に登録が必要です
-scp ~/.ssh/id_ed25519.pub shogo@192.168.1.100:C:\ProgramData\ssh\
-```
-
-Windows 側で管理者 PowerShell から:
-
-```powershell
-# 公開鍵を administrators_authorized_keys に追加
-Get-Content C:\ProgramData\ssh\id_ed25519.pub | Add-Content C:\ProgramData\ssh\administrators_authorized_keys
-Remove-Item C:\ProgramData\ssh\id_ed25519.pub
-
-# ACL を正しく設定（重要）
-icacls $env:ProgramData\ssh\administrators_authorized_keys /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F"
-```
-
-> **注意**: `administrators_authorized_keys` の ACL が正しくないと公開鍵認証が失敗します。詳細は [docs/troubleshooting.md](docs/troubleshooting.md) を参照してください。
-
-### 3. Mac から SSH 接続
+### 2. Mac から SSH 接続
 
 ```bash
 # ユーザー名とIPは自分の環境に合わせて変更してください
 ssh shogo@192.168.1.100
 ```
 
-### 4. Windows 側でリポジトリをクローン
+### 3. Windows 側でリポジトリをクローン
 
 ```powershell
 git clone https://github.com/okamuroshogo/windows-first-setup.git
@@ -73,7 +50,7 @@ notepad .\config\local.psd1
 
 `local.psd1` を開いて、Git のユーザー名・メールアドレスなど自分の環境に合わせて編集してください。
 
-### 5. セットアップ実行
+### 4. セットアップ実行
 
 ```powershell
 pwsh -ExecutionPolicy Bypass -File .\scripts\setup-all.ps1
@@ -93,7 +70,7 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\setup-all.ps1
 
 - Windows 11（クリーンインストール直後を想定）
 - インターネット接続
-- 管理者権限のあるローカルアカウント
+- 管理者権限のあるアカウント（Microsoft アカウント / ローカルアカウント どちらでも可）
 - SSH 接続元の PC（Mac/Linux）に SSH 鍵ペアがあること
 
 ## リポジトリ構成
@@ -372,6 +349,7 @@ Claude Code に以下のような作業を依頼できます:
 | 問題 | 解決方法 |
 |---|---|
 | `winget` が見つからない | Microsoft Store から App Installer をインストール |
+| Microsoft アカウントで SSH できない | Bootstrap スクリプトで公開鍵を貼り付けて登録 |
 | `sshd` が起動しない | `Get-Service sshd` で状態確認、イベントログ確認 |
 | `Permission denied (publickey)` | `administrators_authorized_keys` の ACL を確認 |
 | `claude` が見つからない | `npm install -g @anthropic-ai/claude-code` を再実行 |
