@@ -98,10 +98,12 @@ windows-first-setup/
 │   ├── 06-configure-ime.ps1      # IME/AutoHotkey 設定
 │   ├── 07-configure-network.ps1  # 固定IP設定（手動実行）
 │   ├── 08-install-claude-code.ps1 # Claude Code
+│   ├── 10-install-datadog-collector.ps1 # Datadog メトリクスコレクタ
 │   ├── 09-verify.ps1             # 検証
 │   └── setup-all.ps1             # 一括実行
 ├── assets/
-│   └── win-space-ime.ahk # AutoHotkey IME切替スクリプト
+│   ├── win-space-ime.ahk # AutoHotkey IME切替スクリプト
+│   └── dd-collector.ps1  # Datadog コレクタ本体 (テンプレート)
 └── docs/
     ├── security.md        # セキュリティ注意事項
     └── troubleshooting.md # トラブルシューティング
@@ -120,8 +122,9 @@ windows-first-setup/
 | `06-configure-ime.ps1` | AutoHotkey IME 切替スクリプトの配置・起動 | 不要 |
 | `07-configure-network.ps1` | 固定 IP アドレス設定（`setup-all.ps1` からは呼ばれない） | 必要 |
 | `08-install-claude-code.ps1` | Claude Code のインストール | 不要 |
+| `10-install-datadog-collector.ps1` | CPU/メモリ/GPU を Datadog へ送るコレクタを配置・自動起動登録 | 不要 |
 | `09-verify.ps1` | インストール済みツール・サービスの検証 | 不要 |
-| `setup-all.ps1` | Phase 1〜8 + 検証を順番に実行 | 必要 |
+| `setup-all.ps1` | Phase 1〜8, 10 + 検証を順番に実行 | 必要 |
 
 \* 一部アプリはインストール時に管理者権限が必要な場合があります。
 

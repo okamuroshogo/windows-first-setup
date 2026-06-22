@@ -61,6 +61,11 @@ $phases = @(
         Name     = 'Phase 8: Claude Code'
         Script   = '08-install-claude-code.ps1'
         Critical = $false
+    },
+    @{
+        Name     = 'Phase 10: Datadog コレクタ'
+        Script   = '10-install-datadog-collector.ps1'
+        Critical = $false
     }
 )
 

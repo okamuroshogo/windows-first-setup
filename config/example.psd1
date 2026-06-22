@@ -47,6 +47,16 @@
         "python"     = $true
     }
 
+    # === Datadog メトリクスコレクタ ===
+    # 10-install-datadog-collector.ps1 で使用。CPU/メモリ/GPU を Datadog へ送る。
+    # ApiKey は秘密情報なので config\local.psd1 にのみ実値を書くこと (このファイルはコミットされる)。
+    Datadog = @{
+        Enabled  = $false
+        ApiKey   = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Datadog API キー
+        Site     = "datadoghq.com"                     # ap1.datadoghq.com / datadoghq.eu / us5.datadoghq.com など
+        Interval = 15                                  # 送信間隔(秒)
+    }
+
     # === ネットワーク (固定IP) ===
     # 07-configure-network.ps1 でのみ使用。setup-all.ps1 からは呼ばれない
     Network = @{

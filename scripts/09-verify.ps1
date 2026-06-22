@@ -167,6 +167,27 @@ if (Test-Path $ahkScript) {
     $results += @{ Name = 'AutoHotkey IME'; Status = 'WARN'; Detail = 'Startup にスクリプトなし' }
 }
 
+# --- Datadog コレクタ ---
+$ddTask = Get-ScheduledTask -TaskName 'DatadogMetricsCollector' -ErrorAction SilentlyContinue
+if ($ddTask) {
+    $ddLog = Join-Path $env:LOCALAPPDATA 'dd-collector\dd-collector.log'
+    $recentSend = $false
+    if (Test-Path $ddLog) {
+        # 直近5分以内に SEND error が無ければ送信成功とみなす (成功時は無ログ)
+        $lastErr = Get-Content $ddLog -Tail 20 | Where-Object { $_ -match 'SEND error' } | Select-Object -Last 1
+        $recentSend = -not $lastErr
+    }
+    if ($ddTask.State -eq 'Running') {
+        $detail = if ($recentSend) { '実行中 (送信エラーなし)' } else { '実行中 (直近に送信エラーあり — ログ確認)' }
+        $status = if ($recentSend) { 'OK' } else { 'WARN' }
+        $results += @{ Name = 'Datadog コレクタ'; Status = $status; Detail = $detail }
+    } else {
+        $results += @{ Name = 'Datadog コレクタ'; Status = 'WARN'; Detail = "タスク登録済みだが停止中 (State: $($ddTask.State))" }
+    }
+} else {
+    $results += @{ Name = 'Datadog コレクタ'; Status = 'WARN'; Detail = 'タスク未登録 (Datadog.Enabled=$false の可能性)' }
+}
+
 # --- IPv4 設定 ---
 $physicalIps = Get-NetIPAddress -AddressFamily IPv4 |
     Where-Object {
