@@ -10,6 +10,9 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# PowerShell 5.1 では TLS 1.2 がデフォルトでないため、GitHub 等への HTTPS 接続に必要
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 function Write-Step  { param([string]$Msg) Write-Host "`n[*] $Msg" -ForegroundColor Cyan }
 function Write-OK    { param([string]$Msg) Write-Host "[OK] $Msg" -ForegroundColor Green }
 function Write-Warn  { param([string]$Msg) Write-Host "[WARN] $Msg" -ForegroundColor Yellow }
@@ -119,7 +122,7 @@ if (Test-Path $adminAuthKeysPath) {
                 # 鍵の末尾コメント部分だけ表示
                 $parts = $line -split '\s+'
                 $keyType = $parts[0]
-                $comment = if ($parts.Count -ge 3) { $parts[2..($parts.Count-1)] -join ' ' } else { '(no comment)' }
+                if ($parts.Count -ge 3) { $comment = $parts[2..($parts.Count-1)] -join ' ' } else { $comment = '(no comment)' }
                 Write-Host "    $keyType ... $comment" -ForegroundColor DarkGray
             }
         }
@@ -134,19 +137,19 @@ if (-not $existingKeys) {
 
     Write-Host "  GitHub (${githubKeysUrl}) から公開鍵を取得中..." -ForegroundColor White
     try {
-        $response = Invoke-WebRequest -Uri $githubKeysUrl -UseBasicParsing -TimeoutSec 10
-        $keysToRegister = ($response.Content.Trim() -split "`n") | Where-Object { $_ -match '^ssh-' }
+        $rawKeys = Invoke-RestMethod -Uri $githubKeysUrl -TimeoutSec 10
+        if ($rawKeys) {
+            $keysToRegister = ($rawKeys.Trim() -split "`n") | Where-Object { $_ -match '^ssh-' }
+        }
     } catch {
-        Write-Warn "GitHub からの取得に失敗しました: $_"
+        Write-Warn "GitHub からの取得に失敗しました: $($_.Exception.Message)"
     }
 
-    if ($keysToRegister -and $keysToRegister.Count -gt 0) {
-        Write-OK "GitHub から $($keysToRegister.Count) 個の公開鍵を取得しました"
+    if ($keysToRegister -and @($keysToRegister).Count -gt 0) {
+        Write-OK "GitHub から $(@($keysToRegister).Count) 個の公開鍵を取得しました"
         foreach ($key in $keysToRegister) {
             $parts = $key -split '\s+'
-            $keyType = $parts[0]
-            $keyShort = $parts[1].Substring(0, [Math]::Min(20, $parts[1].Length)) + '...'
-            Write-Host "    $keyType $keyShort" -ForegroundColor DarkGray
+            Write-Host "    $($parts[0]) $($parts[1].Substring(0, 20))..." -ForegroundColor DarkGray
         }
 
         # ssh ディレクトリの確認
@@ -156,7 +159,7 @@ if (-not $existingKeys) {
         }
 
         # 公開鍵を書き込み (BOM なし UTF-8)
-        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
         $newContent = ($keysToRegister -join "`n") + "`n"
         [System.IO.File]::WriteAllText($adminAuthKeysPath, $newContent, $utf8NoBom)
 
@@ -184,7 +187,7 @@ if (-not $existingKeys) {
                 New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
             }
 
-            $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
             [System.IO.File]::WriteAllText($adminAuthKeysPath, "$pubKey`n", $utf8NoBom)
 
             icacls $adminAuthKeysPath /inheritance:r /grant 'Administrators:F' /grant 'SYSTEM:F' | Out-Null
