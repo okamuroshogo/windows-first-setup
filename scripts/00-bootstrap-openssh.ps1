@@ -102,6 +102,31 @@ if ($existingRule -and $existingRule.Profile -ne 'Any') {
     Write-OK "Firewall ルールを全プロファイル (Any) に更新しました"
 }
 
+# --- SSH デフォルトシェルを PowerShell に設定 ---
+Write-Step "SSH デフォルトシェルの設定"
+$regPath = 'HKLM:\SOFTWARE\OpenSSH'
+if (-not (Test-Path $regPath)) {
+    New-Item -Path $regPath -Force | Out-Null
+}
+# PowerShell 7 があればそちらを優先、なければ PowerShell 5.1
+$pwshPath = Get-Command pwsh -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+if (-not $pwshPath) {
+    $defaultPwshPath = Join-Path $env:ProgramFiles 'PowerShell\7\pwsh.exe'
+    if (Test-Path $defaultPwshPath) { $pwshPath = $defaultPwshPath }
+}
+if (-not $pwshPath) {
+    $pwshPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+}
+$currentShell = Get-ItemProperty -Path $regPath -Name 'DefaultShell' -ErrorAction SilentlyContinue
+if ($currentShell -and $currentShell.DefaultShell -eq $pwshPath) {
+    Write-OK "デフォルトシェルは既に設定済み: $pwshPath"
+} else {
+    Set-ItemProperty -Path $regPath -Name 'DefaultShell' -Value $pwshPath
+    Write-OK "デフォルトシェルを設定: $pwshPath"
+    Restart-Service sshd
+    Write-OK "sshd を再起動しました"
+}
+
 # --- SSH 公開鍵の登録 ---
 # Microsoft アカウントではパスワード認証が使えないため、
 # この段階で公開鍵を登録しないと SSH 接続できない。
