@@ -30,22 +30,23 @@ try {
     # ---- 1. すでにフォントが入っているか確認 (冪等) ----
     $step = 'インストール済みフォントの確認'
     $userFontDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
-    $installed = Test-Path (Join-Path $userFontDir 'PlemolJP*Console*NF*.ttf')
+    $installed = Test-Path (Join-Path $userFontDir 'PlemolJPConsoleNF-*.ttf')
 
     if ($installed) {
         Write-Host "[skip] '$FaceName' は既にインストール済みです。" -ForegroundColor DarkGray
     } else {
-        # ---- 2. 最新リリースから PlemolJP Console NF を取得 ----
+        # ---- 2. 最新リリースから Nerd Font 版 zip を取得 ----
+        #  Nerd Font 版 zip の中に PlemolJPConsole_NF (= PlemolJP Console NF) が同梱されている
         $step = 'GitHub リリース情報の取得'
         Write-Host "[1/4] 最新リリースを問い合わせ中 ($Repo)..." -ForegroundColor Cyan
         $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" `
             -Headers @{ 'User-Agent' = 'wt-font-setup'; 'Accept' = 'application/vnd.github+json' }
 
         $asset = $rel.assets |
-            Where-Object { $_.name -match 'PlemolJPConsole_NF' -and $_.name -notmatch 'HS' -and $_.name -like '*.zip' } |
+            Where-Object { $_.name -match '_NF_' -and $_.name -notmatch '_HS' -and $_.name -like '*.zip' } |
             Sort-Object { $_.name.Length } |
             Select-Object -First 1
-        if (-not $asset) { throw "リリースに 'PlemolJPConsole_NF' の zip が見つかりませんでした ($($rel.tag_name))。" }
+        if (-not $asset) { throw "リリースに Nerd Font 版 (_NF_) の zip が見つかりませんでした ($($rel.tag_name))。" }
 
         # ---- 3. ダウンロード & 展開 ----
         $step = 'フォントのダウンロードと展開'
@@ -67,8 +68,10 @@ try {
         Add-Type -Namespace Win32 -Name Font -MemberDefinition @'
 [System.Runtime.InteropServices.DllImport("gdi32.dll")] public static extern int AddFontResource(string p);
 '@
-        $ttfs = Get-ChildItem -Path $tmp -Recurse -Filter '*.ttf'
-        if (-not $ttfs) { throw "展開したファイルの中に .ttf が見つかりませんでした。" }
+        # zip には PlemolJPConsole / PlemolJP35Console 等が同梱されるため、目的の Console NF だけ抽出する
+        $ttfs = Get-ChildItem -Path $tmp -Recurse -Filter '*.ttf' |
+            Where-Object { $_.Name -match '^PlemolJPConsoleNF-' }
+        if (-not $ttfs) { throw "展開したファイルの中に PlemolJPConsoleNF-*.ttf が見つかりませんでした。" }
         foreach ($f in $ttfs) {
             $dest = Join-Path $userFontDir $f.Name
             Copy-Item $f.FullName $dest -Force
