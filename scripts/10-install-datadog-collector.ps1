@@ -113,7 +113,7 @@ if ($state -eq 'Running') {
 }
 
 Write-Host ""
-Write-Host "  送信メトリクス: system.cpu.percent / system.mem.* / gpu.utilization.percent / gpu.memory.dedicated_bytes"
+Write-Host "  送信メトリクス: system.cpu.{percent,idle} / system.mem.* / gpu.* / nvidia.gpu.{utilization,memory.used,memory.total} (server:win, gpu_index:0)"
 Write-Host "  ログ: $installDir\dd-collector.log"
 Write-Host ""
 
