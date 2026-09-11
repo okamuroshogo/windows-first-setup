@@ -70,7 +70,9 @@ if ($disableFindMyMouse) {
         if ($json.PSObject.Properties['enabled'] -and $json.enabled.PSObject.Properties['FindMyMouse']) {
             if ($json.enabled.FindMyMouse) {
                 $json.enabled.FindMyMouse = $false
-                $json | ConvertTo-Json -Depth 32 | Set-Content -Path $ptSettings -Encoding UTF8
+                # PowerToys の C++ JSON パーサは BOM を読めず、BOM 付きで書くと
+                # 設定全体が既定値 (FindMyMouse=有効, KBM=無効) に化けるため BOM なし必須
+                [IO.File]::WriteAllText($ptSettings, ($json | ConvertTo-Json -Depth 32), (New-Object System.Text.UTF8Encoding($false)))
                 Write-OK "Find My Mouse を無効化しました"
                 $ptNeedsRestart = $true
             } else {
