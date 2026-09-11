@@ -21,8 +21,8 @@ $ErrorActionPreference = 'Stop'
 $FaceName = 'PlemolJP Console NF'   # Windows Terminal に設定するフォント名
 $FontSize = 11
 $FontWeight = 'light'
-$Opacity = 60                       # 背景の不透明度 (%)。100 で不透過
-$UseAcrylic = $true                 # アクリル (ぼかし) 効果。文字の可読性が上がる
+$Opacity = 30                       # 背景の不透明度 (%)。100 で不透過
+$UseAcrylic = $false                # アクリル (ぼかし) 効果
 $Repo = 'yuru7/PlemolJP'            # PlemolJP 配布元
 
 $step = '初期化'
