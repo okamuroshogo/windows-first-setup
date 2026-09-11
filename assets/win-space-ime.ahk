@@ -32,17 +32,33 @@ IME_CMODE_FULLSHAPE := 0x0008   ; full-width characters
 ; ---------------------------------------------------------------------------
 #space::
 {
-    hwnd := WinGetID("A")
-    hIME := DllCall("imm32\ImmGetDefaultIMEWnd", "Ptr", hwnd, "Ptr")
-    imeStatus := SendMessage(WM_IME_CONTROL, IMC_GETOPENSTATUS, 0, hIME)
-
-    if (imeStatus) {
-        ; IME is currently ON -> turn it OFF (alphanumeric input)
-        SendMessage(WM_IME_CONTROL, IMC_SETOPENSTATUS, 0, hIME)
-    } else {
-        ; IME is currently OFF -> turn it ON and force hiragana mode
-        SendMessage(WM_IME_CONTROL, IMC_SETOPENSTATUS, 1, hIME)
-        SetIMEConversionMode(hwnd, IME_CMODE_NATIVE)
+    ; WinGetID / SendMessage are throwing functions: no active window, a window
+    ; without an IME window (consoles), a hung window, or an elevated window
+    ; (UIPI) all raise an exception. Unhandled, that pops an error dialog
+    ; (usually hidden behind other windows) and the hotkey looks dead until
+    ; the script is reloaded — so guard everything and always survive.
+    try {
+        hwnd := WinExist("A")
+        if (!hwnd)
+            return
+        hIME := DllCall("imm32\ImmGetDefaultIMEWnd", "Ptr", hwnd, "Ptr")
+        if (!hIME)
+            throw Error("window has no default IME window")
+        ; timeout 500ms so a hung window can't block the hotkey for 5s (default)
+        imeStatus := SendMessage(WM_IME_CONTROL, IMC_GETOPENSTATUS, 0, hIME, , , , , 500)
+        if (imeStatus) {
+            ; IME is currently ON -> turn it OFF (alphanumeric input)
+            SendMessage(WM_IME_CONTROL, IMC_SETOPENSTATUS, 0, hIME, , , , , 500)
+        } else {
+            ; IME is currently OFF -> turn it ON and force hiragana mode
+            SendMessage(WM_IME_CONTROL, IMC_SETOPENSTATUS, 1, hIME, , , , , 500)
+            SetIMEConversionMode(hwnd, IME_CMODE_NATIVE)
+        }
+    } catch {
+        ; Windows the IMM API cannot reach: fall back to the hankaku/zenkaku
+        ; key (sc029), which toggles the IME the native way. Send releases the
+        ; held Win modifier automatically, so this is not sent as Win+sc029.
+        Send "{sc029}"
     }
 }
 
