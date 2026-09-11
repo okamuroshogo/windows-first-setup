@@ -1,10 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Windows Terminal のフォントだけを PlemolJP Console NF に変更する
+    Windows Terminal のフォントと外観 (半透明) を設定する
 .DESCRIPTION
     - GitHub Releases から最新の「PlemolJP Console NF」を取得し、現在のユーザーにだけ
       インストールする (管理者権限不要 / システムフォントは変更しない)。
-    - Windows Terminal (安定版 / Preview) の profiles.defaults.font だけを追加・更新する。
+    - Windows Terminal (安定版 / Preview) の profiles.defaults の font / opacity /
+      useAcrylic だけを追加・更新する。
       既存の settings.json は変更前に同ディレクトリへバックアップし、他の設定は維持する。
     - 冪等: 何度実行しても同じ結果に収束する。一時ファイルは処理後に削除する。
 
@@ -20,6 +21,8 @@ $ErrorActionPreference = 'Stop'
 $FaceName = 'PlemolJP Console NF'   # Windows Terminal に設定するフォント名
 $FontSize = 11
 $FontWeight = 'light'
+$Opacity = 60                       # 背景の不透明度 (%)。100 で不透過
+$UseAcrylic = $true                 # アクリル (ぼかし) 効果。文字の可読性が上がる
 $Repo = 'yuru7/PlemolJP'            # PlemolJP 配布元
 
 $step = '初期化'
@@ -109,14 +112,18 @@ try {
         if (-not ($json.profiles.PSObject.Properties.Name -contains 'defaults')) {
             $json.profiles | Add-Member -NotePropertyName defaults -NotePropertyValue ([pscustomobject]@{}) -Force
         }
-        # profiles.defaults.font だけを追加・更新 (他の設定は維持)
+        # profiles.defaults の font / opacity / useAcrylic だけを追加・更新 (他の設定は維持)
         $json.profiles.defaults | Add-Member -NotePropertyName font -NotePropertyValue ([pscustomobject]@{
             face   = $FaceName
             size   = $FontSize
             weight = $FontWeight
         }) -Force
+        $json.profiles.defaults | Add-Member -NotePropertyName opacity -NotePropertyValue $Opacity -Force
+        $json.profiles.defaults | Add-Member -NotePropertyName useAcrylic -NotePropertyValue $UseAcrylic -Force
 
-        ($json | ConvertTo-Json -Depth 100) | Set-Content -Path $sp -Encoding UTF8
+        # PS5.1 の Set-Content -Encoding UTF8 は BOM 付きになり JSON パーサを
+        # 壊しうるため、BOM なし UTF-8 で書く (PowerToys settings.json と同じ教訓)
+        [IO.File]::WriteAllText($sp, ($json | ConvertTo-Json -Depth 100), (New-Object System.Text.UTF8Encoding($false)))
         Write-Host "      更新: $sp" -ForegroundColor DarkGray
         Write-Host "      バックアップ: $backup" -ForegroundColor DarkGray
     }
