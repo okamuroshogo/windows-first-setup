@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Scoop で CLI ツールをインストールする
 .DESCRIPTION

@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     OpenSSH Server をインストール・起動し、SSH接続できる状態にする。

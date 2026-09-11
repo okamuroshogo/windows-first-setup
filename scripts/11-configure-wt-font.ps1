@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Windows Terminal のフォントだけを PlemolJP Console NF に変更する
 .DESCRIPTION

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     共通ヘルパー関数
 .DESCRIPTION

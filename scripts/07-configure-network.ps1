@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     固定IPアドレスを設定する (手動実行専用)
 .DESCRIPTION

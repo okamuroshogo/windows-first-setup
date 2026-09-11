@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     基本環境のセットアップ (PowerShell 7, Windows Terminal, Git, WinGet更新)

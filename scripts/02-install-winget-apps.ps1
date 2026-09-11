@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     WinGet で GUI アプリをインストールする
 .DESCRIPTION

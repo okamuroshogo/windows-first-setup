@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Git のグローバル設定を行う
 .DESCRIPTION
