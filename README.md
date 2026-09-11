@@ -99,10 +99,19 @@ windows-first-setup/
 │   ├── 07-configure-network.ps1  # 固定IP設定（手動実行）
 │   ├── 08-install-claude-code.ps1 # Claude Code
 │   ├── 10-install-datadog-collector.ps1 # Datadog メトリクスコレクタ
+│   ├── 11-configure-wt-font.ps1  # Windows Terminal フォント
+│   ├── 12-configure-keyboard.ps1 # PowerToys キーリマップ / CapsLock→Ctrl
+│   ├── 13-install-usb-resume-fix.ps1 # スリープ復帰時 USB 復旧タスク
+│   ├── 14-install-datadog-kiosk.ps1  # ダッシュボード キオスク表示
 │   ├── 09-verify.ps1             # 検証
 │   └── setup-all.ps1             # 一括実行
 ├── assets/
-│   ├── win-space-ime.ahk # AutoHotkey IME切替スクリプト
+│   ├── win-space-ime.ahk      # AutoHotkey: Win+Space IME切替 / Win単独無効
+│   ├── emacs-keys.ahk         # AutoHotkey: Emacs 風キーバインド
+│   ├── ctrl-ctrl-terminal.ahk # AutoHotkey: Ctrl 2回押しでホットキーターミナル
+│   ├── powertoys-keyboard-manager.json # PowerToys: Win+C/V → Ctrl+C/V
+│   ├── fix-usb-controller.ps1 # USB コントローラ復旧スクリプト
+│   ├── launch-datadog-kiosk.ps1 # キオスクランチャー (レイアウトは config から生成)
 │   └── dd-collector.ps1  # Datadog コレクタ本体 (テンプレート)
 └── docs/
     ├── security.md        # セキュリティ注意事項
@@ -119,12 +128,18 @@ windows-first-setup/
 | `03-install-scoop-tools.ps1` | 7zip, jq, ripgrep, Node.js 等の CLI ツール | 不要 |
 | `04-configure-git.ps1` | Git のユーザー名・メール・デフォルトブランチ設定 | 不要 |
 | `05-configure-sshd.ps1` | SSHD の自動起動・デフォルトシェル設定 | 必要 |
-| `06-configure-ime.ps1` | AutoHotkey IME 切替スクリプトの配置・起動 | 不要 |
+| `06-configure-ime.ps1` | AutoHotkey スクリプト群 (IME切替/Emacsキー/ホットキーターミナル) の Startup 登録・起動 | 不要 |
 | `07-configure-network.ps1` | 固定 IP アドレス設定（`setup-all.ps1` からは呼ばれない） | 必要 |
 | `08-install-claude-code.ps1` | Claude Code のインストール | 不要 |
 | `10-install-datadog-collector.ps1` | CPU/メモリ/GPU を Datadog へ送るコレクタを配置・自動起動登録 | 不要 |
+| `11-configure-wt-font.ps1` | Windows Terminal のフォントを PlemolJP Console NF に設定 | 不要 |
+| `12-configure-keyboard.ps1` | PowerToys キーリマップ反映 / Find My Mouse 無効化 / CapsLock→Ctrl | 不要* |
+| `13-install-usb-resume-fix.ps1` | スリープ復帰時に USB 全滅を自動復旧するタスク登録 | 必要 |
+| `14-install-datadog-kiosk.ps1` | ダッシュボードを常時表示するキオスクの Startup 登録 | 不要 |
 | `09-verify.ps1` | インストール済みツール・サービスの検証 | 不要 |
-| `setup-all.ps1` | Phase 1〜8, 10 + 検証を順番に実行 | 必要 |
+| `setup-all.ps1` | Phase 1〜8, 10, 12〜14 + 検証を順番に実行 | 必要 |
+
+`12` の CapsLock→Ctrl (Scancode Map) のみ管理者権限+再起動が必要。
 
 \* 一部アプリはインストール時に管理者権限が必要な場合があります。
 
@@ -244,17 +259,27 @@ Set-NetIPInterface -InterfaceIndex <InterfaceIndex> -Dhcp Enabled
 Set-DnsClientServerAddress -InterfaceIndex <InterfaceIndex> -ResetServerAddresses
 ```
 
-## IME 設定 / Win+Space
+## キーボードカスタマイズ一覧
 
-このリポジトリには、AutoHotkey v2 で `Win + Space` を日本語 IME のオン・オフトグルに置き換えるスクリプトが含まれています。
+このリポジトリが管理しているキーバインドの全体像です。
 
-- **IME オフ**: 英数入力
-- **IME オン**: ひらがな入力
+| キー | 動作 | 実装 |
+|---|---|---|
+| `Win + Space` | 日本語 IME オン/オフトグル (オフ=英数、オン=ひらがな) | `assets/win-space-ime.ahk` |
+| `Win` 単独 | 何もしない (スタートメニューを開かない。`Win+E` 等の組み合わせは有効) | `assets/win-space-ime.ahk` |
+| `Ctrl + Space` | スタートメニューを開く | `assets/win-space-ime.ahk` |
+| `Ctrl + A/E/B/F/P/N/H/D/K`, `Alt + F/B/D` | Emacs 風カーソル移動・編集 (ターミナルは除外、`Win+F12` でトグル) | `assets/emacs-keys.ahk` |
+| `Ctrl` 2回押し | ホットキー専用ターミナルを最大化+最前面で開く / 再度押すと最小化 | `assets/ctrl-ctrl-terminal.ahk` |
+| `Win + C` / `Win + V` | `Ctrl + C` / `Ctrl + V` (コピー/ペースト) | PowerToys Keyboard Manager (`12`) |
+| `CapsLock` | 左 `Ctrl` (config の `CapsLockToCtrl = $true` の場合のみ) | Scancode Map (`12`) |
+
+AutoHotkey スクリプトは Startup フォルダのショートカット (.lnk) がリポジトリ内の
+`assets\` を直接参照するため、`git pull` + AHK 再起動 (`Ctrl+Alt+R`) で更新が反映されます。
 
 > **注意**:
 > - Windows 標準の `Win + Space` による言語切替を上書きします
+> - `Ctrl` 2回押しは PowerToys の「マウスの検索 (Find My Mouse)」と競合するため、`12-configure-keyboard.ps1` が Find My Mouse を無効化します
 > - 管理者権限で起動したアプリ（管理者 PowerShell 等）では、通常権限で実行中の AutoHotkey が効かない場合があります。この場合は AutoHotkey を管理者として実行するか、タスクスケジューラで最高権限で起動する設定にしてください。
-> - スクリプトは Windows の Startup フォルダに配置され、ログイン時に自動起動します
 
 ## CopyQ 設定
 

@@ -1,4 +1,4 @@
-# このファイルを local.psd1 にコピーして、自分の環境に合わせて値を変更してください。
+﻿# このファイルを local.psd1 にコピーして、自分の環境に合わせて値を変更してください。
 # Copy-Item .\config\local.psd1.example .\config\local.psd1
 # notepad .\config\local.psd1
 #
@@ -20,8 +20,30 @@
     SetDefaultShell = $true
 
     # === AutoHotkey ===
-    # Win+SpaceのIMEトグルスクリプトをStartupに配置する
-    EnableAutoHotkey = $true
+    # Startup にショートカットを登録して自動起動する (実体は assets\ を直接参照)
+    EnableAutoHotkey       = $true   # Win+Space IMEトグル / Win単独無効
+    EnableEmacsKeys        = $true   # Emacs 風キーバインド
+    EnableCtrlCtrlTerminal = $true   # Ctrl 2回押しでホットキーターミナル
+
+    # === キーボード ===
+    PowerToysKeyboardManager    = $true   # Win+C/V → Ctrl+C/V
+    PowerToysDisableFindMyMouse = $true   # Ctrl 2回押しの競合を解消
+    CapsLockToCtrl              = $false  # $true で CapsLock → 左Ctrl (要管理者+再起動)
+
+    # === USB 復旧タスク (スリープ復帰時) ===
+    UsbResumeFix = @{
+        Enabled = $false
+        ControllerInstanceId = ''   # 空なら自動検出
+    }
+
+    # === Datadog キオスク ===
+    DatadogKiosk = @{
+        Enabled = $false
+        Windows = @(
+            @{ Match = 'datadog'; Url = 'https://app.datadoghq.com/dashboard/xxx'
+               X = 0; Y = 0; W = 1280; H = 1400 }
+        )
+    }
 
     # === WinGetアプリ ===
     # $false にするとインストールをスキップ

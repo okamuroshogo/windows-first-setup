@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     セットアップの検証
 .DESCRIPTION
@@ -155,16 +155,47 @@ if ($tailscaleCmd) {
 
 # --- AutoHotkey スクリプト ---
 $startupDir = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
-$ahkScript = Join-Path $startupDir 'win-space-ime.ahk'
-if (Test-Path $ahkScript) {
-    $ahkProcess = Get-Process -Name 'AutoHotkey*' -ErrorAction SilentlyContinue
-    if ($ahkProcess) {
-        $results += @{ Name = 'AutoHotkey IME'; Status = 'OK'; Detail = 'スクリプト配置済み & プロセス実行中' }
+$ahkRunning = @(Get-CimInstance Win32_Process -Filter "Name LIKE 'AutoHotkey%'" -ErrorAction SilentlyContinue)
+foreach ($ahkName in @('win-space-ime', 'emacs-keys', 'ctrl-ctrl-terminal')) {
+    $lnk = Join-Path $startupDir "$ahkName.lnk"
+    $proc = $ahkRunning | Where-Object { $_.CommandLine -match [regex]::Escape($ahkName) }
+    if ((Test-Path $lnk) -and $proc) {
+        $results += @{ Name = "AHK $ahkName"; Status = 'OK'; Detail = 'Startup 登録済み & 実行中' }
+    } elseif (Test-Path $lnk) {
+        $results += @{ Name = "AHK $ahkName"; Status = 'WARN'; Detail = 'Startup 登録済みだがプロセス未実行' }
     } else {
-        $results += @{ Name = 'AutoHotkey IME'; Status = 'WARN'; Detail = 'スクリプト配置済みだがプロセス未実行' }
+        $results += @{ Name = "AHK $ahkName"; Status = 'WARN'; Detail = 'Startup 未登録 (06 未実行 or 無効)' }
+    }
+}
+
+# --- PowerToys Keyboard Manager 設定 ---
+$repoRoot = Split-Path $PSScriptRoot -Parent
+$kbmSource = Join-Path $repoRoot 'assets\powertoys-keyboard-manager.json'
+$kbmDest   = Join-Path $env:LOCALAPPDATA 'Microsoft\PowerToys\Keyboard Manager\default.json'
+if ((Test-Path $kbmSource) -and (Test-Path $kbmDest)) {
+    if ((Get-FileHash $kbmSource).Hash -eq (Get-FileHash $kbmDest).Hash) {
+        $results += @{ Name = 'PowerToys KBM'; Status = 'OK'; Detail = 'リポジトリの設定と一致' }
+    } else {
+        $results += @{ Name = 'PowerToys KBM'; Status = 'WARN'; Detail = 'リポジトリの設定と差分あり (12 を実行)' }
     }
 } else {
-    $results += @{ Name = 'AutoHotkey IME'; Status = 'WARN'; Detail = 'Startup にスクリプトなし' }
+    $results += @{ Name = 'PowerToys KBM'; Status = 'WARN'; Detail = '設定未配置 (12 未実行 or PowerToys 未インストール)' }
+}
+
+# --- USB 復旧タスク ---
+$usbTask = Get-ScheduledTask -TaskName 'FixUsbControllerOnResume' -ErrorAction SilentlyContinue
+if ($usbTask) {
+    $results += @{ Name = 'USB 復旧タスク'; Status = 'OK'; Detail = "登録済み (State: $($usbTask.State))" }
+} else {
+    $results += @{ Name = 'USB 復旧タスク'; Status = 'WARN'; Detail = '未登録 (13 未実行 or 無効)' }
+}
+
+# --- Datadog キオスク ---
+$kioskLnk = Join-Path $startupDir 'datadog-kiosk.lnk'
+if (Test-Path $kioskLnk) {
+    $results += @{ Name = 'Datadog キオスク'; Status = 'OK'; Detail = 'Startup 登録済み' }
+} else {
+    $results += @{ Name = 'Datadog キオスク'; Status = 'WARN'; Detail = 'Startup 未登録 (14 未実行 or 無効)' }
 }
 
 # --- Datadog コレクタ ---
@@ -227,9 +258,9 @@ Write-Host "  セットアップ検証結果" -ForegroundColor White
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Show-ResultTable -Results $results
 
-$okCount = ($results | Where-Object { $_.Status -eq 'OK' }).Count
-$warnCount = ($results | Where-Object { $_.Status -eq 'WARN' }).Count
-$failCount = ($results | Where-Object { $_.Status -eq 'FAIL' }).Count
+$okCount = @($results | Where-Object { $_.Status -eq 'OK' }).Count
+$warnCount = @($results | Where-Object { $_.Status -eq 'WARN' }).Count
+$failCount = @($results | Where-Object { $_.Status -eq 'FAIL' }).Count
 
 Write-Host "  合計: $($results.Count) 項目  |  OK: $okCount  |  WARN: $warnCount  |  FAIL: $failCount"
 Write-Host ""

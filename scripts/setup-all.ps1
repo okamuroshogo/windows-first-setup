@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     Windows 初期セットアップを一括実行する
@@ -65,6 +65,21 @@ $phases = @(
     @{
         Name     = 'Phase 10: Datadog コレクタ'
         Script   = '10-install-datadog-collector.ps1'
+        Critical = $false
+    },
+    @{
+        Name     = 'Phase 12: キーボード'
+        Script   = '12-configure-keyboard.ps1'
+        Critical = $false
+    },
+    @{
+        Name     = 'Phase 13: USB 復旧タスク'
+        Script   = '13-install-usb-resume-fix.ps1'
+        Critical = $false
+    },
+    @{
+        Name     = 'Phase 14: Datadog キオスク'
+        Script   = '14-install-datadog-kiosk.ps1'
         Critical = $false
     }
 )

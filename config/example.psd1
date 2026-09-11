@@ -1,4 +1,4 @@
-@{
+﻿@{
     # === Git設定 ===
     GitUserName  = "Your Name"
     GitUserEmail = "your-email@example.com"
@@ -13,9 +13,16 @@
     # PowerShell 7をSSHのデフォルトシェルにする
     SetDefaultShell = $true
 
-    # === AutoHotkey ===
-    # Win+SpaceのIMEトグルスクリプトをStartupに配置する
-    EnableAutoHotkey = $true
+    # === AutoHotkey (06-configure-ime.ps1) ===
+    # Startup にショートカットを登録して自動起動する (実体は assets\ を直接参照)
+    EnableAutoHotkey       = $true   # win-space-ime.ahk : Win+Space IMEトグル / Win単独無効
+    EnableEmacsKeys        = $true   # emacs-keys.ahk : Ctrl+A/E/B/F/P/N 等の Emacs 風キーバインド
+    EnableCtrlCtrlTerminal = $true   # ctrl-ctrl-terminal.ahk : Ctrl 2回押しでホットキーターミナル
+
+    # === キーボード (12-configure-keyboard.ps1) ===
+    PowerToysKeyboardManager    = $true   # assets\powertoys-keyboard-manager.json を反映 (Win+C/V → Ctrl+C/V)
+    PowerToysDisableFindMyMouse = $true   # Ctrl 2回押しがターミナルと競合するため Find My Mouse を無効化
+    CapsLockToCtrl              = $false  # $true で CapsLock → 左Ctrl (Scancode Map, 要管理者+再起動)
 
     # === WinGetアプリ ===
     # $false にするとインストールをスキップ
@@ -55,6 +62,26 @@
         ApiKey   = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Datadog API キー
         Site     = "datadoghq.com"                     # ap1.datadoghq.com / datadoghq.eu / us5.datadoghq.com など
         Interval = 15                                  # 送信間隔(秒)
+    }
+
+    # === USB 復旧タスク (13-install-usb-resume-fix.ps1) ===
+    # スリープ復帰後に USB デバイスがエラー状態なら xHCI コントローラを
+    # PnP 再起動して復旧するタスクを登録する (要管理者)。
+    UsbResumeFix = @{
+        Enabled = $false
+        ControllerInstanceId = ''   # 空なら自動検出。固定したい場合のみ 'PCI\VEN_...' を指定
+    }
+
+    # === Datadog キオスク (14-install-datadog-kiosk.ps1) ===
+    # ダッシュボード等を Chrome アプリウィンドウで指定座標に常時表示する。
+    # URL は環境固有情報を含むため config\local.psd1 (gitignore 済み) にのみ書くこと。
+    DatadogKiosk = @{
+        Enabled = $false
+        Windows = @(
+            @{ Match = 'datadog'                                  # ウィンドウタイトルの正規表現
+               Url   = 'https://app.datadoghq.com/dashboard/xxx'  # 表示する URL
+               X = 0; Y = 0; W = 1280; H = 1400 }                 # ウィンドウ位置とサイズ
+        )
     }
 
     # === ネットワーク (固定IP) ===

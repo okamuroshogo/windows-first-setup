@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Datadog 軽量メトリクスコレクタをインストールする
 .DESCRIPTION
@@ -76,7 +76,9 @@ $content = Get-Content $template -Raw
 $content = $content.Replace('__DD_API_KEY__',  $apiKey)
 $content = $content.Replace('__DD_SITE__',     $site)
 $content = $content.Replace('__DD_INTERVAL__', [string]$interval)
-Set-Content -Path $target -Value $content -Encoding UTF8
+# タスクは powershell.exe (5.1) で実行されるため BOM 付き UTF-8 で書く
+# (BOM なしだと 5.1 が ANSI として読み、日本語コメントが化けて壊れる)
+[IO.File]::WriteAllText($target, $content, (New-Object System.Text.UTF8Encoding($true)))
 
 Write-OK "コレクタを配置しました: $target"
 
@@ -87,17 +89,27 @@ $me       = whoami
 
 $action  = New-ScheduledTaskAction -Execute $ps `
     -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$target`""
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $me
+
+# トリガー3種: ログオン時 + システム起動時 + 5分ごとの死活監視 (落ちていたら再起動)。
+# スリープ復帰などでプロセスが死んでも 5 分以内に自動復帰する。
+# 既に動いていれば MultipleInstances 既定 (IgnoreNew) により何もしない。
+$logonTrigger   = New-ScheduledTaskTrigger -AtLogOn -User $me
+$startupTrigger = New-ScheduledTaskTrigger -AtStartup
+$repeatTrigger  = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
+    -RepetitionInterval (New-TimeSpan -Minutes 5) `
+    -RepetitionDuration (New-TimeSpan -Days 3650)
+
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) `
     -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
 $principal = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited
 
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `
+Register-ScheduledTask -TaskName $taskName -Action $action `
+    -Trigger @($logonTrigger, $startupTrigger, $repeatTrigger) `
     -Settings $settings -Principal $principal `
-    -Description "CPU/GPU/Memory -> Datadog ($site). 自動起動 (logon)。" -Force | Out-Null
+    -Description "CPU/GPU/Memory -> Datadog ($site). 自動起動 (logon/startup/5分ごと死活監視)。" -Force | Out-Null
 
-Write-OK "スケジュールタスクを登録しました: $taskName (ログオン時自動起動)"
+Write-OK "スケジュールタスクを登録しました: $taskName (ログオン/起動/5分ごと死活監視)"
 
 # --- 既存プロセスを再起動して即反映 ---
 Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
