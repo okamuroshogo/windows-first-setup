@@ -451,6 +451,57 @@ if ($currentPath -notlike "*$tailscalePath*") {
 
 ---
 
+## Win+Space で日本語/英語が切り替わらない
+
+### 症状
+
+`win-space-ime.ahk` が起動しているのに、Win+Space を押しても IME が切り替わらない (無反応)。
+
+### 原因
+
+**日本語 IME (Microsoft IME) が入力方式として登録されていない。**
+
+日本語版 Windows でも、セットアップ時に英語キーボードを選ぶなどの経緯で
+言語リストが「日本語 (ja) / 入力方式ゼロ」、実際の入力ロケールは `00000409` (英語US レイアウト) のみ、
+という状態になることがあります。この状態ではトグルすべき IME 自体が存在しないため、
+AHK の `ImmSetOpenStatus` も Windows 標準の Win+Space も何も起こしません。
+
+確認方法:
+
+```powershell
+# InputMethodTips が空なら IME 未登録
+Get-WinUserLanguageList | Select-Object LanguageTag, InputMethodTips
+
+# 実際にロードされているキーボードレイアウト (00000409 のみなら IME なし)
+Get-ItemProperty "HKCU:\Keyboard Layout\Preload"
+```
+
+### 対処
+
+`06-configure-ime.ps1` が Microsoft IME の登録まで行います。再実行してください。
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\06-configure-ime.ps1
+```
+
+手動で登録する場合:
+
+```powershell
+$msime = '0411:{03B5835F-F03C-411B-9CE2-AA23E1171E36}{A76C93D9-5523-4E90-AAFA-4DB112F9AC76}'
+$list = Get-WinUserLanguageList
+($list | Where-Object LanguageTag -eq 'ja').InputMethodTips.Add($msime)
+Set-WinUserLanguageList $list -Force
+```
+
+### 注意: US 配列キーボードの場合
+
+MS-IME を登録すると入力ロケールが `00000411` (日本語 106/109) になります。
+物理キーボードが US 配列 (101/104) だと `@ [ ] : "` などの記号がずれるため、
+`local.psd1` の `HardwareKeyboardLayout = "US"` を設定して
+`06-configure-ime.ps1` を**管理者権限で**実行してください (反映には再起動が必要)。
+
+---
+
 ## AutoHotkey が管理者アプリで効かない
 
 ### 症状

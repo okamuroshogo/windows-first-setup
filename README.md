@@ -46,6 +46,9 @@ ssh shogo@192.168.1.100
 ### 3. Windows 側でリポジトリをクローン
 
 ```powershell
+# カレントディレクトリに注意。System32 などに clone すると
+# 管理者権限なしで編集も git pull もできなくなります。
+cd $HOME
 git clone https://github.com/okamuroshogo/windows-first-setup.git
 cd windows-first-setup
 Copy-Item .\config\local.psd1.example .\config\local.psd1
@@ -157,6 +160,7 @@ windows-first-setup/
     DisableSleep = $false             # $true でスリープ無効化
     SetDefaultShell = $true           # SSH デフォルトシェルを pwsh にする
     EnableAutoHotkey = $true          # Win+Space IME トグルを有効化
+    HardwareKeyboardLayout = "US"     # 物理キーボード配列 US / JIS / "" (要管理者+再起動)
 
     WinGetApps = @{                   # $false でスキップ
         GoogleChrome = $true

@@ -32,7 +32,6 @@ $appMap = [ordered]@{
     Cursor          = @{ Id = 'Anysphere.Cursor';                Name = 'Cursor' }
     OnePassword     = @{ Id = 'AgileBits.1Password';             Name = '1Password' }
     Tailscale       = @{ Id = 'Tailscale.Tailscale';             Name = 'Tailscale' }
-    Discord         = @{ Id = 'Discord.Discord';                 Name = 'Discord' }
     AutoHotkey      = @{ Id = 'AutoHotkey.AutoHotkey';           Name = 'AutoHotkey v2' }
     CopyQ           = @{ Id = 'hluk.CopyQ';                     Name = 'CopyQ' }
     PowerToys       = @{ Id = 'Microsoft.PowerToys';             Name = 'PowerToys' }

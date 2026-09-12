@@ -127,6 +127,77 @@ foreach ($s in $ahkScripts | Where-Object Enabled) {
     Write-OK "$($s.Name) を起動しました"
 }
 
+# --- 日本語 IME (Microsoft IME) の登録 ---
+#  Win+Space の IME トグルは「MS-IME が入力方式として登録されている」ことが前提。
+#  日本語 Windows でもセットアップ時に英語キーボードを選ぶと言語リストが
+#  ja / 入力方式ゼロ (実体は 00000409 の US レイアウトのみ) になることがあり、
+#  この状態だとトグルする IME 自体が存在せず Win+Space が無反応になる。
+Write-Step "日本語 IME (Microsoft IME) の登録確認"
+
+$MsImeTip = '0411:{03B5835F-F03C-411B-9CE2-AA23E1171E36}{A76C93D9-5523-4E90-AAFA-4DB112F9AC76}'
+
+try {
+    $langList = Get-WinUserLanguageList
+    $ja = $langList | Where-Object { $_.LanguageTag -eq 'ja' }
+
+    if (-not $ja) {
+        $langList.Add('ja')
+        $ja = $langList | Where-Object { $_.LanguageTag -eq 'ja' }
+        Write-OK "言語リストに日本語 (ja) を追加"
+    }
+
+    if ($ja.InputMethodTips -contains $MsImeTip) {
+        Write-OK "Microsoft IME は既に登録済み"
+    } else {
+        $ja.InputMethodTips.Add($MsImeTip)
+        Set-WinUserLanguageList $langList -Force
+        Write-OK "Microsoft IME を入力方式として登録しました (Win+Space のトグル対象)"
+    }
+} catch {
+    Write-Warn "Microsoft IME の登録に失敗: $_"
+}
+
+# --- ハードウェアキーボードレイアウト (US / JIS) ---
+#  MS-IME を入れると入力ロケールが 00000411 (日本語 106/109) になるため、
+#  物理キーボードが US 配列だと @ [ ] : " 等が入れ替わってしまう。
+#  i8042prt の Override* で「英語キーボード (101/102)」に切り替える。
+#  HKLM への書き込みなので管理者権限が必要 + 反映には再起動 (サインアウト) が必要。
+$kbLayout = if ($config.ContainsKey('HardwareKeyboardLayout')) { "$($config.HardwareKeyboardLayout)" } else { '' }
+
+if ($kbLayout) {
+    Write-Step "ハードウェアキーボードレイアウト: $kbLayout"
+
+    $kbProfiles = @{
+        'US'  = @{ Driver = 'kbd101.dll'; Identifier = 'PCAT_101KEY'; Type = 7; Subtype = 0 }
+        'JIS' = @{ Driver = 'kbd106.dll'; Identifier = 'PCAT_106KEY'; Type = 7; Subtype = 2 }
+    }
+
+    if (-not $kbProfiles.ContainsKey($kbLayout)) {
+        Write-Warn "HardwareKeyboardLayout の値が不正です: '$kbLayout' (US または JIS)"
+    } elseif (-not (Test-IsAdmin)) {
+        Write-Warn "ハードウェアキーボードレイアウトの変更には管理者権限が必要です。スキップします。"
+    } else {
+        $kb = $kbProfiles[$kbLayout]
+        $kbKey = 'HKLM:\SYSTEM\CurrentControlSet\Services\i8042prt\Parameters'
+        $current = Get-ItemProperty $kbKey -ErrorAction SilentlyContinue
+
+        if ($current -and $current.OverrideKeyboardIdentifier -eq $kb.Identifier) {
+            Write-OK "既に $kbLayout 配列 ($($kb.Identifier)) に設定済み"
+        } else {
+            try {
+                Set-ItemProperty $kbKey -Name 'LayerDriver JPN'            -Value $kb.Driver     -ErrorAction Stop
+                Set-ItemProperty $kbKey -Name 'OverrideKeyboardIdentifier' -Value $kb.Identifier -ErrorAction Stop
+                Set-ItemProperty $kbKey -Name 'OverrideKeyboardType'       -Value $kb.Type    -Type DWord -ErrorAction Stop
+                Set-ItemProperty $kbKey -Name 'OverrideKeyboardSubtype'    -Value $kb.Subtype -Type DWord -ErrorAction Stop
+                Write-OK "$kbLayout 配列 ($($kb.Identifier) / $($kb.Driver)) に設定しました"
+                Write-Warn "反映には再起動が必要です。"
+            } catch {
+                Write-Warn "ハードウェアキーボードレイアウトの変更に失敗: $_"
+            }
+        }
+    }
+}
+
 # --- 言語設定の確認 ---
 Write-Step "言語設定の確認"
 

@@ -19,6 +19,12 @@
     EnableEmacsKeys        = $true   # emacs-keys.ahk : Ctrl+A/E/B/F/P/N 等の Emacs 風キーバインド
     EnableCtrlCtrlTerminal = $true   # ctrl-ctrl-terminal.ahk : Ctrl 2回押しでホットキーターミナル
 
+    # === ハードウェアキーボードレイアウト (06-configure-ime.ps1) ===
+    # 物理キーボードの配列。"US" (101/102) / "JIS" (106/109) / "" (変更しない)
+    # MS-IME を入れると入力ロケールが日本語 (00000411) になるため、
+    # US 配列のキーボードでは "US" を指定しないと @ [ ] : " 等がずれる。要管理者+再起動。
+    HardwareKeyboardLayout = ""
+
     # === キーボード (12-configure-keyboard.ps1) ===
     PowerToysKeyboardManager    = $true   # assets\powertoys-keyboard-manager.json を反映 (Win+C/V → Ctrl+C/V)
     PowerToysDisableFindMyMouse = $true   # Ctrl 2回押しがターミナルと競合するため Find My Mouse を無効化
@@ -32,7 +38,6 @@
         Cursor          = $true
         OnePassword     = $true
         Tailscale       = $true
-        Discord         = $true
         AutoHotkey      = $true
         CopyQ           = $true
         PowerToys       = $true
