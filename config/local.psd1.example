@@ -34,7 +34,7 @@
     # === キーボード ===
     PowerToysKeyboardManager    = $true   # Win+C/V → Ctrl+C/V
     PowerToysDisableFindMyMouse = $true   # Ctrl 2回押しの競合を解消
-    CapsLockToCtrl              = $false  # $true で CapsLock → 左Ctrl (要管理者+再起動)
+    CapsLockToCtrl              = $true   # $true で CapsLock → 左Ctrl (要管理者+再起動)
 
     # === USB 復旧タスク (スリープ復帰時) ===
     UsbResumeFix = @{

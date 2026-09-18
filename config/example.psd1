@@ -28,7 +28,7 @@
     # === キーボード (12-configure-keyboard.ps1) ===
     PowerToysKeyboardManager    = $true   # assets\powertoys-keyboard-manager.json を反映 (Win+C/V → Ctrl+C/V)
     PowerToysDisableFindMyMouse = $true   # Ctrl 2回押しがターミナルと競合するため Find My Mouse を無効化
-    CapsLockToCtrl              = $false  # $true で CapsLock → 左Ctrl (Scancode Map, 要管理者+再起動)
+    CapsLockToCtrl              = $true   # $true で CapsLock → 左Ctrl (Scancode Map, 要管理者+再起動)
 
     # === WinGetアプリ ===
     # $false にするとインストールをスキップ

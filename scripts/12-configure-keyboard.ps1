@@ -131,7 +131,9 @@ if ($capsToCtrl) {
         )
 
         $regPath = 'HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layout'
-        $current = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).'Scancode Map'
+        # StrictMode 下では未設定の値をプロパティ参照すると例外になるため PSObject 経由で取る
+        $regProps = Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue
+        $current  = if ($regProps -and $regProps.PSObject.Properties['Scancode Map']) { $regProps.'Scancode Map' } else { $null }
 
         if ($current -and -not (Compare-Object $current $scancodeMap -SyncWindow 0)) {
             Write-OK "Scancode Map は既に設定済み (CapsLock → Ctrl)"

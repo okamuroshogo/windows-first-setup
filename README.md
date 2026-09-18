@@ -275,7 +275,7 @@ Set-DnsClientServerAddress -InterfaceIndex <InterfaceIndex> -ResetServerAddresse
 | `Ctrl + A/E/B/F/P/N/H/D/K`, `Alt + F/B/D` | Emacs 風カーソル移動・編集 (ターミナルは除外、`Win+F12` でトグル) | `assets/emacs-keys.ahk` |
 | `Ctrl` 2回押し | ホットキー専用ターミナルを最大化+最前面で開く / 再度押すと最小化 | `assets/ctrl-ctrl-terminal.ahk` |
 | `Win + C` / `Win + V` | `Ctrl + C` / `Ctrl + V` (コピー/ペースト) | PowerToys Keyboard Manager (`12`) |
-| `CapsLock` | 左 `Ctrl` (config の `CapsLockToCtrl = $true` の場合のみ) | Scancode Map (`12`) |
+| `CapsLock` | 左 `Ctrl` (既定で有効。`CapsLockToCtrl = $false` で無効化、要管理者+再起動) | Scancode Map (`12`) |
 
 AutoHotkey スクリプトは Startup フォルダのショートカット (.lnk) がリポジトリ内の
 `assets\` を直接参照するため、`git pull` + AHK 再起動 (`Ctrl+Alt+R`) で更新が反映されます。
