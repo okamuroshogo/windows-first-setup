@@ -107,6 +107,32 @@ if ($config.DisableSleep -eq $true) {
     Write-Host "[SKIP] スリープ設定の変更はスキップ (設定なし)"
 }
 
+# --- デスクトップのゴミ箱アイコン ---
+# 未指定時は非表示。$false を明示した場合のみ表示に戻す
+$hideRecycleBin = -not $config.ContainsKey('HideDesktopRecycleBin') -or [bool]$config.HideDesktopRecycleBin
+Write-Step "デスクトップのゴミ箱アイコン"
+try {
+    $recycleBinClsid = '{645FF040-5081-101B-9F08-00AA002F954E}'
+    $hideValue = if ($hideRecycleBin) { 1 } else { 0 }
+    foreach ($view in 'NewStartPanel', 'ClassicStartMenu') {
+        $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\$view"
+        if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }
+        Set-ItemProperty -Path $key -Name $recycleBinClsid -Value $hideValue -Type DWord
+    }
+    # Explorer に変更を通知してデスクトップを再描画 (SHCNE_ASSOCCHANGED)
+    if (-not ('Win32.Shell32' -as [type])) {
+        Add-Type -Namespace Win32 -Name Shell32 -MemberDefinition '[DllImport("shell32.dll")] public static extern void SHChangeNotify(int wEventId, int uFlags, IntPtr dwItem1, IntPtr dwItem2);'
+    }
+    [Win32.Shell32]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)
+    if ($hideRecycleBin) {
+        Write-OK "デスクトップのゴミ箱アイコンを非表示にしました"
+    } else {
+        Write-OK "デスクトップのゴミ箱アイコンを表示にしました"
+    }
+} catch {
+    Write-Warn "ゴミ箱アイコン設定の変更に失敗: $_"
+}
+
 # --- Windows Update 確認方法の案内 ---
 Write-Step "Windows Update の確認"
 Write-Host "  Windows Update は以下のコマンドで確認できます:"

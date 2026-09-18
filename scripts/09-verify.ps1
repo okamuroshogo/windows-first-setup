@@ -185,6 +185,17 @@ if ((Test-Path $kbmSource) -and (Test-Path $kbmDest)) {
     $results += @{ Name = 'PowerToys KBM'; Status = 'WARN'; Detail = '設定未配置 (12 未実行 or PowerToys 未インストール)' }
 }
 
+# --- デスクトップのゴミ箱アイコン ---
+$hideRecycleBin = -not $config.ContainsKey('HideDesktopRecycleBin') -or [bool]$config.HideDesktopRecycleBin
+$recycleBinHidden = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel' -Name '{645FF040-5081-101B-9F08-00AA002F954E}' -ErrorAction SilentlyContinue).'{645FF040-5081-101B-9F08-00AA002F954E}' -eq 1
+if (-not $hideRecycleBin) {
+    $results += @{ Name = 'ゴミ箱アイコン'; Status = 'SKIP'; Detail = '無効 (config の HideDesktopRecycleBin = $false)' }
+} elseif ($recycleBinHidden) {
+    $results += @{ Name = 'ゴミ箱アイコン'; Status = 'OK'; Detail = 'デスクトップで非表示' }
+} else {
+    $results += @{ Name = 'ゴミ箱アイコン'; Status = 'WARN'; Detail = 'デスクトップに表示中 (01 を実行)' }
+}
+
 # --- USB 復旧タスク ---
 $usbTask = Get-ScheduledTask -TaskName 'FixUsbControllerOnResume' -ErrorAction SilentlyContinue
 if ($usbTask) {

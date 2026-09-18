@@ -9,6 +9,9 @@
     # === スリープ無効化 ($true で無効化する) ===
     DisableSleep = $false
 
+    # === デスクトップのゴミ箱アイコン ($true で非表示、未指定時も非表示) ===
+    HideDesktopRecycleBin = $true
+
     # === SSHデフォルトシェル ===
     # PowerShell 7をSSHのデフォルトシェルにする
     SetDefaultShell = $true

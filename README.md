@@ -126,7 +126,7 @@ windows-first-setup/
 | スクリプト | 説明 | 管理者権限 |
 |---|---|---|
 | `00-bootstrap-openssh.ps1` | OpenSSH Server のインストール・起動・Firewall 設定 | 必要 |
-| `01-base-setup.ps1` | PowerShell 7, Git, Windows Terminal, PC名変更, スリープ設定 | 必要 |
+| `01-base-setup.ps1` | PowerShell 7, Git, Windows Terminal, PC名変更, スリープ設定, ゴミ箱アイコン非表示 | 必要 |
 | `02-install-winget-apps.ps1` | Chrome, Slack, Cursor, 1Password 等の GUI アプリ | 不要* |
 | `03-install-scoop-tools.ps1` | 7zip, jq, ripgrep, Node.js 等の CLI ツール | 不要 |
 | `04-configure-git.ps1` | Git のユーザー名・メール・デフォルトブランチ設定 | 不要 |
@@ -158,6 +158,7 @@ windows-first-setup/
     GitUserEmail = "you@example.com"  # Git のメールアドレス
     ComputerName = ""                 # PC名（空欄で変更しない）
     DisableSleep = $false             # $true でスリープ無効化
+    HideDesktopRecycleBin = $true     # デスクトップのゴミ箱アイコンを非表示
     SetDefaultShell = $true           # SSH デフォルトシェルを pwsh にする
     EnableAutoHotkey = $true          # Win+Space IME トグルを有効化
     HardwareKeyboardLayout = "US"     # 物理キーボード配列 US / JIS / "" (要管理者+再起動)
