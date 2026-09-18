@@ -34,7 +34,15 @@ $kiosk = if ($config.ContainsKey('DatadogKiosk')) { $config.DatadogKiosk } else 
 $enabled = if ($kiosk.ContainsKey('Enabled')) { [bool]$kiosk.Enabled } else { $false }
 $windows = if ($kiosk.ContainsKey('Windows')) { @($kiosk.Windows) } else { @() }
 
+$startupDir = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
+$lnkPath    = Join-Path $startupDir 'datadog-kiosk.lnk'
+
 if (-not $enabled) {
+    # 無効化した後も Startup に残っていると起動時に表示され続けるため削除する
+    if (Test-Path $lnkPath) {
+        Remove-Item $lnkPath -Force
+        Write-OK "Startup ショートカットを削除しました: $lnkPath"
+    }
     Write-Warn "Datadog キオスクはスキップされました (config の DatadogKiosk.Enabled = `$false)。"
     return
 }
@@ -79,9 +87,7 @@ Set-Content -Path $layoutFile -Value $layoutJson -Encoding UTF8
 Write-OK "レイアウトを生成: $layoutFile ($($windows.Count) ウィンドウ)"
 
 # --- Startup ショートカット作成 ---
-$startupDir = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
-$lnkPath    = Join-Path $startupDir 'datadog-kiosk.lnk'
-$ps         = (Get-Command powershell.exe).Source
+$ps = (Get-Command powershell.exe).Source
 
 $shell = New-Object -ComObject WScript.Shell
 $lnk = $shell.CreateShortcut($lnkPath)

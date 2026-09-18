@@ -15,6 +15,9 @@ Write-Step "Phase 9: セットアップ検証"
 
 $results = @()
 
+# 「無効にしているだけ」と「未実行」を区別するため config を参照する
+$config = Read-Config
+
 # --- PowerShell 7 ---
 $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
 if ($pwshCmd) {
@@ -191,11 +194,22 @@ if ($usbTask) {
 }
 
 # --- Datadog キオスク ---
-$kioskLnk = Join-Path $startupDir 'datadog-kiosk.lnk'
-if (Test-Path $kioskLnk) {
+$kioskCfg     = if ($config.ContainsKey('DatadogKiosk')) { $config.DatadogKiosk } else { @{} }
+$kioskEnabled = if ($kioskCfg.ContainsKey('Enabled')) { [bool]$kioskCfg.Enabled } else { $false }
+$kioskLnk     = Join-Path $startupDir 'datadog-kiosk.lnk'
+$kioskPresent = Test-Path $kioskLnk
+
+if (-not $kioskEnabled) {
+    # 意図して無効にしている状態は WARN ではなく SKIP
+    if ($kioskPresent) {
+        $results += @{ Name = 'Datadog キオスク'; Status = 'WARN'; Detail = 'config で無効だが Startup に残存 (14 を実行して削除)' }
+    } else {
+        $results += @{ Name = 'Datadog キオスク'; Status = 'SKIP'; Detail = '無効 (config の DatadogKiosk.Enabled = $false)' }
+    }
+} elseif ($kioskPresent) {
     $results += @{ Name = 'Datadog キオスク'; Status = 'OK'; Detail = 'Startup 登録済み' }
 } else {
-    $results += @{ Name = 'Datadog キオスク'; Status = 'WARN'; Detail = 'Startup 未登録 (14 未実行 or 無効)' }
+    $results += @{ Name = 'Datadog キオスク'; Status = 'WARN'; Detail = 'Startup 未登録 (14 未実行)' }
 }
 
 # --- Datadog コレクタ ---
@@ -261,8 +275,9 @@ Show-ResultTable -Results $results
 $okCount = @($results | Where-Object { $_.Status -eq 'OK' }).Count
 $warnCount = @($results | Where-Object { $_.Status -eq 'WARN' }).Count
 $failCount = @($results | Where-Object { $_.Status -eq 'FAIL' }).Count
+$skipCount = @($results | Where-Object { $_.Status -eq 'SKIP' }).Count
 
-Write-Host "  合計: $($results.Count) 項目  |  OK: $okCount  |  WARN: $warnCount  |  FAIL: $failCount"
+Write-Host "  合計: $($results.Count) 項目  |  OK: $okCount  |  WARN: $warnCount  |  FAIL: $failCount  |  SKIP: $skipCount"
 Write-Host ""
 
 if ($failCount -eq 0) {
