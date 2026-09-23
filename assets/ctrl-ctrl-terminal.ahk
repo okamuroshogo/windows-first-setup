@@ -49,13 +49,22 @@ ToggleTerminal() {
         ShowTerminal(hwnd)
         return
     }
-    if WinActive(TERM_TITLE)
+    ; A minimized window can stay "active" when Windows has nothing else to
+    ; hand focus to, so also check it is not minimized — otherwise the next
+    ; double-tap would minimize again instead of showing it.
+    if (WinActive(hwnd) && WinGetMinMax(hwnd) != -1)
         HideTerminal(hwnd)
     else
         ShowTerminal(hwnd)
 }
 
+global gPrevHwnd := 0   ; window that had focus before the terminal was shown
+
 ShowTerminal(hwnd) {
+    global gPrevHwnd
+    prev := WinExist("A")
+    if (prev && prev != hwnd)
+        gPrevHwnd := prev
     WinRestore(hwnd)
     WinActivate(hwnd)
     WinMaximize(hwnd)
@@ -65,6 +74,12 @@ ShowTerminal(hwnd) {
 HideTerminal(hwnd) {
     WinSetAlwaysOnTop(0, hwnd)
     WinMinimize(hwnd)
+    ; Explicitly move focus away so the terminal doesn't remain the
+    ; foreground window while minimized.
+    if (gPrevHwnd && WinExist(gPrevHwnd) && WinGetMinMax(gPrevHwnd) != -1)
+        WinActivate(gPrevHwnd)
+    else
+        WinActivate("ahk_class Shell_TrayWnd")
 }
 
 LaunchTerminal() {
