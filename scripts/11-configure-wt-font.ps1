@@ -1,11 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Windows Terminal のフォントと外観 (半透明) を設定する
+    Windows Terminal のフォントと外観 (半透明)、タブ操作キー (Ctrl+T / Ctrl+W) を設定する
 .DESCRIPTION
     - GitHub Releases から最新の「PlemolJP Console NF」を取得し、現在のユーザーにだけ
       インストールする (管理者権限不要 / システムフォントは変更しない)。
     - Windows Terminal (安定版 / Preview) の profiles.defaults の font / opacity /
-      useAcrylic だけを追加・更新する。
+      useAcrylic と、Ctrl+T (新規タブ) / Ctrl+W (タブを閉じる) のキーバインドだけを追加・更新する。
       既存の settings.json は変更前に同ディレクトリへバックアップし、他の設定は維持する。
     - 冪等: 何度実行しても同じ結果に収束する。一時ファイルは処理後に削除する。
 
@@ -24,6 +24,10 @@ $FontWeight = 'light'
 $Opacity = 60                       # 背景の不透明度 (%)。100 で不透過
 $UseAcrylic = $false                # アクリル (ぼかし) 効果
 $Repo = 'yuru7/PlemolJP'            # PlemolJP 配布元
+$TabKeys = @(                       # 追加するタブ操作のキーバインド
+    @{ id = 'User.NewTabCtrlT';   command = 'newTab';   keys = 'ctrl+t' }
+    @{ id = 'User.CloseTabCtrlW'; command = 'closeTab'; keys = 'ctrl+w' }
+)
 
 $step = '初期化'
 $tmp = $null
@@ -120,6 +124,25 @@ try {
         }) -Force
         $json.profiles.defaults | Add-Member -NotePropertyName opacity -NotePropertyValue $Opacity -Force
         $json.profiles.defaults | Add-Member -NotePropertyName useAcrylic -NotePropertyValue $UseAcrylic -Force
+
+        # ブラウザ風のタブ操作: Ctrl+T で新規タブ / Ctrl+W でタブを閉じる
+        # 同じ id / キーの既存エントリを除いてから追加する (冪等)
+        $myIds = $TabKeys | ForEach-Object { $_.id }
+        $myKeys = $TabKeys | ForEach-Object { $_.keys }
+        $actions = @()
+        if ($json.PSObject.Properties.Name -contains 'actions') {
+            $actions = @($json.actions | Where-Object { $_ -and $myIds -notcontains $_.id })
+        }
+        $keybindings = @()
+        if ($json.PSObject.Properties.Name -contains 'keybindings') {
+            $keybindings = @($json.keybindings | Where-Object { $_ -and $myIds -notcontains $_.id -and $myKeys -notcontains $_.keys })
+        }
+        foreach ($k in $TabKeys) {
+            $actions += [pscustomobject]@{ command = $k.command; id = $k.id }
+            $keybindings += [pscustomobject]@{ id = $k.id; keys = $k.keys }
+        }
+        $json | Add-Member -NotePropertyName actions -NotePropertyValue $actions -Force
+        $json | Add-Member -NotePropertyName keybindings -NotePropertyValue $keybindings -Force
 
         # PS5.1 の Set-Content -Encoding UTF8 は BOM 付きになり JSON パーサを
         # 壊しうるため、BOM なし UTF-8 で書く (PowerToys settings.json と同じ教訓)

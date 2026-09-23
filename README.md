@@ -102,7 +102,7 @@ windows-first-setup/
 │   ├── 07-configure-network.ps1  # 固定IP設定（手動実行）
 │   ├── 08-install-claude-code.ps1 # Claude Code
 │   ├── 10-install-datadog-collector.ps1 # Datadog メトリクスコレクタ
-│   ├── 11-configure-wt-font.ps1  # Windows Terminal フォント
+│   ├── 11-configure-wt-font.ps1  # Windows Terminal フォント / タブ操作キー
 │   ├── 12-configure-keyboard.ps1 # PowerToys キーリマップ / CapsLock→Ctrl
 │   ├── 13-install-usb-resume-fix.ps1 # スリープ復帰時 USB 復旧タスク
 │   ├── 14-install-datadog-kiosk.ps1  # ダッシュボード キオスク表示
@@ -135,7 +135,7 @@ windows-first-setup/
 | `07-configure-network.ps1` | 固定 IP アドレス設定（`setup-all.ps1` からは呼ばれない） | 必要 |
 | `08-install-claude-code.ps1` | Claude Code のインストール | 不要 |
 | `10-install-datadog-collector.ps1` | CPU/メモリ/GPU を Datadog へ送るコレクタを配置・自動起動登録 | 不要 |
-| `11-configure-wt-font.ps1` | Windows Terminal のフォントを PlemolJP Console NF に設定 | 不要 |
+| `11-configure-wt-font.ps1` | Windows Terminal のフォントを PlemolJP Console NF に設定 / Ctrl+T で新規タブ・Ctrl+W でタブを閉じる | 不要 |
 | `12-configure-keyboard.ps1` | PowerToys キーリマップ反映 / Find My Mouse 無効化 / CapsLock→Ctrl | 不要* |
 | `13-install-usb-resume-fix.ps1` | スリープ復帰時に USB 全滅を自動復旧するタスク登録 | 必要 |
 | `14-install-datadog-kiosk.ps1` | ダッシュボードを常時表示するキオスクの Startup 登録 | 不要 |
