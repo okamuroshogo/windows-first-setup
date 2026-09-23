@@ -109,7 +109,7 @@ windows-first-setup/
 │   ├── 09-verify.ps1             # 検証
 │   └── setup-all.ps1             # 一括実行
 ├── assets/
-│   ├── win-space-ime.ahk      # AutoHotkey: Win+Space IME切替 / Win単独無効
+│   ├── win-space-ime.ahk      # AutoHotkey: Win+Space IME切替 / Win単独無効 / タブ移動
 │   ├── emacs-keys.ahk         # AutoHotkey: Emacs 風キーバインド
 │   ├── ctrl-ctrl-terminal.ahk # AutoHotkey: Ctrl 2回押しでホットキーターミナル
 │   ├── powertoys-keyboard-manager.json # PowerToys: Win+C/V → Ctrl+C/V
@@ -273,6 +273,7 @@ Set-DnsClientServerAddress -InterfaceIndex <InterfaceIndex> -ResetServerAddresse
 | `Win + Space` | 日本語 IME オン/オフトグル (オフ=英数、オン=ひらがな) | `assets/win-space-ime.ahk` |
 | `Win` 単独 | 何もしない (スタートメニューを開かない。`Win+E` 等の組み合わせは有効) | `assets/win-space-ime.ahk` |
 | `Ctrl + Space` | スタートメニューを開く | `assets/win-space-ime.ahk` |
+| `Win + Ctrl + [` / `]` | 前 / 次のタブへ移動 (CapsLock が Ctrl なので実質 `Win + CapsLock + [` / `]`)。アプリごとに本来のショートカットへ変換し、未知のアプリは `Ctrl+Tab` / `Ctrl+Shift+Tab` にフォールバック | `assets/win-space-ime.ahk` |
 | `Ctrl + A/E/B/F/P/N/H/D/K`, `Alt + F/B/D` | Emacs 風カーソル移動・編集 (ターミナルは除外、`Win+F12` でトグル) | `assets/emacs-keys.ahk` |
 | `Ctrl` 2回押し | ホットキー専用ターミナルを最大化+最前面で開く / 再度押すと最小化 | `assets/ctrl-ctrl-terminal.ahk` |
 | `Win + C` / `Win + V` | `Ctrl + C` / `Ctrl + V` (コピー/ペースト) | PowerToys Keyboard Manager (`12`) |

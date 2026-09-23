@@ -9,6 +9,8 @@
 ;
 ;   Win+Space   -> toggle the Japanese IME (OFF = alphanumeric, ON = hiragana)
 ;   Ctrl+Space  -> open the Start menu
+;   Win+Ctrl+[  -> previous tab (CapsLock is Ctrl, see 12-configure-keyboard.ps1)
+;   Win+Ctrl+]  -> next tab
 ;   Win (alone) -> do nothing (does NOT open the Start menu)
 ;   Win + <key> -> normal Windows shortcuts still work (Win+E, Win+R, ...)
 ;
@@ -78,6 +80,68 @@ IME_CMODE_FULLSHAPE := 0x0008   ; full-width characters
 ~LWin::Send "{Blind}{vkFF}"
 ~RWin::Send "{Blind}{vkFF}"
 
+
+; ---------------------------------------------------------------------------
+; Win+Ctrl+[ / ]  ->  previous / next tab, in whatever app is in front
+; ---------------------------------------------------------------------------
+;   CapsLock is remapped to left Ctrl by the Scancode Map, so in practice this
+;   is Win + CapsLock + [ / ].
+;
+;   Every app spells "next tab" differently, so the hotkey only provides the
+;   trigger: TabSwitch() looks up the active window's exe and sends that app's
+;   own shortcut. Unknown apps fall back to Ctrl+Tab / Ctrl+Shift+Tab, which is
+;   what most tabbed Windows apps use.
+;
+;   Scancodes (not the characters "[" / "]") are used so the hotkey is immune
+;   to the IME state. sc01A / sc01B are the two keys right of P on a US
+;   keyboard, matching HardwareKeyboardLayout = "US" in config\local.psd1.
+;   On a JIS 106/109 board they would be sc01B / sc02B instead.
+;
+;   To add an app: run "C:\Program Files\AutoHotkey\WindowSpy.ahk", read the exe
+;   name off the active window and add a lowercase entry below. To apply, just
+;   re-run this file -- #SingleInstance Force replaces the running copy. (There
+;   is deliberately no Ctrl+Alt+R here: emacs-keys.ahk already owns that.)
+; ---------------------------------------------------------------------------
+
+#^sc01A::TabSwitch(1)   ; Win+Ctrl+[ : previous tab
+#^sc01B::TabSwitch(2)   ; Win+Ctrl+] : next tab
+
+TabSwitch(dir) {
+    ; [prev, next] per exe. Keys are lowercase; the lookup lowercases too.
+    static apps := Map(
+        ; browsers: Ctrl+PgUp/PgDn walks tabs in order, while Ctrl+Tab is
+        ; most-recently-used in some of them (repeated presses bounce)
+        "chrome.exe",           ["^{PgUp}", "^{PgDn}"],
+        "msedge.exe",           ["^{PgUp}", "^{PgDn}"],
+        "firefox.exe",          ["^{PgUp}", "^{PgDn}"],
+        "brave.exe",            ["^{PgUp}", "^{PgDn}"],
+        "vivaldi.exe",          ["^{PgUp}", "^{PgDn}"],
+        ; editors: Ctrl+PgUp/PgDn is previous/next editor
+        "cursor.exe",           ["^{PgUp}", "^{PgDn}"],
+        "code.exe",             ["^{PgUp}", "^{PgDn}"],
+        "code - insiders.exe",  ["^{PgUp}", "^{PgDn}"],
+        "windsurf.exe",         ["^{PgUp}", "^{PgDn}"],
+        "obsidian.exe",         ["^{PgUp}", "^{PgDn}"],
+        ; terminals: Ctrl+Tab is Windows Terminal's own nextTab
+        "windowsterminal.exe",  ["^+{Tab}", "^{Tab}"],
+        "openconsole.exe",      ["^+{Tab}", "^{Tab}"],
+        "wezterm-gui.exe",      ["^+{Tab}", "^{Tab}"],
+        ; shell / built-ins
+        "explorer.exe",         ["^+{Tab}", "^{Tab}"],
+        "notepad.exe",          ["^+{Tab}", "^{Tab}"])
+    static fallback := ["^+{Tab}", "^{Tab}"]
+
+    ; WinGetProcessName throws when there is no active window, or when the
+    ; window belongs to an elevated process (UIPI). Unhandled that pops an
+    ; error dialog and the hotkey looks dead, so fall through to the default.
+    exe := ""
+    try exe := StrLower(WinGetProcessName("A"))
+
+    keys := apps.Has(exe) ? apps[exe] : fallback
+    ; Send releases the physically-held Win by itself, so this goes out as a
+    ; plain Ctrl+<key> and not as Win+Ctrl+<key>.
+    Send keys[dir]
+}
 ; ---------------------------------------------------------------------------
 ; Helper: set the IME conversion mode for a given window
 ; ---------------------------------------------------------------------------
