@@ -18,6 +18,7 @@
 
 TERM_TITLE    := "HotkeyPS"
 DOUBLE_TAP_MS := 350
+gTermHwnd     := 0      ; handle of the terminal window; see FindTerminal()
 
 ~LControl up:: CtrlTap("LControl")
 ~RControl up:: CtrlTap("RControl")
@@ -39,13 +40,15 @@ CtrlTap(key) {
 }
 
 ToggleTerminal() {
-    SetTitleMatchMode 3   ; exact title match only
-    hwnd := WinExist(TERM_TITLE)
+    global gTermHwnd
+    hwnd := FindTerminal()
     if (!hwnd) {
         LaunchTerminal()
+        SetTitleMatchMode 3   ; exact title match only
         hwnd := WinWait(TERM_TITLE, , 10)
         if (!hwnd)
             return
+        gTermHwnd := hwnd
         ShowTerminal(hwnd)
         return
     }
@@ -59,6 +62,21 @@ ToggleTerminal() {
 }
 
 global gPrevHwnd := 0   ; window that had focus before the terminal was shown
+
+; A Windows Terminal window is titled after its ACTIVE TAB, so as soon as a
+; second tab is open in the hotkey terminal the window title is no longer
+; TERM_TITLE. Looking the window up by title then reported the terminal as
+; gone, LaunchTerminal() ran, and since it passes "-w hotkeyps" wt.exe dropped
+; yet another tab into that very window, so every double-tap piled on one more
+; tab. Remember the handle instead. The title search is kept only to re-attach
+; to a terminal that outlived this script (reload / restart).
+FindTerminal() {
+    global gTermHwnd
+    if (gTermHwnd && WinExist("ahk_id " gTermHwnd))
+        return gTermHwnd
+    SetTitleMatchMode 3   ; exact title match only
+    return gTermHwnd := WinExist(TERM_TITLE)
+}
 
 ShowTerminal(hwnd) {
     global gPrevHwnd
